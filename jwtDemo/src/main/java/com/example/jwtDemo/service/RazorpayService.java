@@ -11,34 +11,33 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
+import org.springframework.http.MediaType;
+
+import com.example.jwtDemo.config.RazorpayProperties;
+
 @Service
 public class RazorpayService {
 
     private final RestClient restClient;
+    private final RazorpayProperties razorpayProperties;
 
-    @Value("${razorpay.key-id}")
-    private String keyId;
-
-    @Value("${razorpay.key-secret}")
-    private String keySecret;
-
-    @Value("${razorpay.currency}")
-    private String currency;
-
-    public RazorpayService(@Value("${razorpay.key-id}") String keyId,
-                           @Value("${razorpay.key-secret}") String keySecret) {
+    public RazorpayService(RazorpayProperties razorpayProperties) {
+        this.razorpayProperties = razorpayProperties;
         this.restClient = RestClient.builder()
                 .baseUrl("https://api.razorpay.com/v1")
-                .defaultHeaders(headers -> headers.setBasicAuth(keyId, keySecret))
+                .defaultHeaders(headers -> headers.setBasicAuth(
+                        razorpayProperties.getKeyId(), 
+                        razorpayProperties.getKeySecret()))
                 .build();
     }
 
     public RazorpayOrderResponse createOrder(long amount, String receipt) {
         return restClient.post()
                 .uri("/orders")
+                .contentType(MediaType.APPLICATION_JSON)
                 .body(Map.of(
                         "amount", amount,
-                        "currency", currency,
+                        "currency", razorpayProperties.getCurrency(),
                         "receipt", receipt
                 ))
                 .retrieve()
@@ -50,7 +49,7 @@ public class RazorpayService {
             String payload = serverOrderId + "|" + razorpayPaymentId;
             Mac mac = Mac.getInstance("HmacSHA256");
             SecretKeySpec secretKeySpec =
-                    new SecretKeySpec(keySecret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
+                    new SecretKeySpec(razorpayProperties.getKeySecret().getBytes(StandardCharsets.UTF_8), "HmacSHA256");
             mac.init(secretKeySpec);
 
             byte[] digest = mac.doFinal(payload.getBytes(StandardCharsets.UTF_8));
@@ -63,11 +62,11 @@ public class RazorpayService {
     }
 
     public String getKeyId() {
-        return keyId;
+        return razorpayProperties.getKeyId();
     }
 
     public String getCurrency() {
-        return currency;
+        return razorpayProperties.getCurrency();
     }
 
     public record RazorpayOrderResponse(

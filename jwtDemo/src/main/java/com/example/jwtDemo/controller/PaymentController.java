@@ -22,8 +22,13 @@ public class PaymentController {
     }
 
     @PostMapping("/create-order")
-    public ResponseEntity<CreatePaymentOrderResponse> createOrder() {
-        return ResponseEntity.ok(paymentService.createPaymentOrder());
+    public ResponseEntity<?> createOrder() {
+        try {
+            return ResponseEntity.ok(paymentService.createPaymentOrder());
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.badRequest().body(Map.of("message", "Failed: " + e.getMessage()));
+        }
     }
 
     @PostMapping("/verify")
